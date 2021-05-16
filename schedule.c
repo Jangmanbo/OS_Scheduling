@@ -115,6 +115,7 @@ void set_schedule(int method) {
 //     1: otherwise
 int do_schedule(int tick) {
 	burst++;
+	int min_idx, min = 100, exist = 0;
 	for (int i = 0; i < num; i++)
 	{
 		if (info[i][1]==tick)
@@ -125,7 +126,6 @@ int do_schedule(int tick) {
 			end_pt++;
 		}
 	}
-
 	switch (mtd)
 	{
 	case 1:
@@ -135,7 +135,7 @@ int do_schedule(int tick) {
 			if (CPU != -1 && !burst_time[CPU]) {//terminate
 				finish[CPU] = tick;
 				terminate++;
-				if (terminate == num) { break; }
+				if (terminate == num) { break; } //모든 프로세스 terminate
 			}
 			if (request[front_pt] != -1)	//ready queue에 프로세스가 있음
 			{
@@ -149,6 +149,8 @@ int do_schedule(int tick) {
 		}
 		break;
 	case 2:
+		
+		/*
 		if (CPU != num && (!CPU || burst_time[CPU - 1] == burst)) { //tick==0이거나 context switching이 일어남
 			int min_idx, min = 100;
 			for (int i = 0; i < num; i++)	//ready queue에 있는 프로세스 중 burst time이 가장 작은 프로세스 찾기
@@ -176,33 +178,36 @@ int do_schedule(int tick) {
 			terminate++;
 			finish[CPU - 1] = tick;//finish time 기록
 		}
+		*/
 		break;
 	case 3:
 		//실행중인 프로세스의 남은 burst 시간 업데이트
-		if (CPU != 0) { burst_time[CPU - 1]--; }
-
-		int min_idx, min = 100;
-		for (int i = 0; i < num; i++)	//ready queue에 있는 프로세스 중 남은 burst time이 가장 작은 프로세스 찾기
-		{
-			if (ready[i] == 1 && 0 < burst_time[i] && burst_time[i] < min)
-			{
-				min = burst_time[i];
-				min_idx = i;
-			}
-		}
-		if (CPU && !burst_time[CPU - 1]) {  //terminante된 경우
-			finish[CPU - 1] = tick;
+		if (CPU != -1) { burst_time[CPU]--; }
+		if (CPU != -1 && !burst_time[CPU]) {//terminate
+			finish[CPU] = tick;
 			terminate++;
-			if (num == terminate) { break; }
+			CPU = -1;
+			if (terminate == num) { break; } //모든 프로세스 terminate
 		}
-		if (!CPU || min < burst_time[CPU - 1] || !burst_time[CPU - 1]) { //context switching
-			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[min_idx][0]);
-			ready[min_idx] = 0;
-			if (CPU && burst_time[CPU - 1]) { ready[CPU - 1] = 1; } //CPU의 프로세스 ready queue로
-			if (response[min_idx] == -1) {//CPU를 처음 할당받음
-				response[min_idx] = tick - info[min_idx][1]; //response time = tick - arrival time
+
+
+		for (int i = 0; i < end_pt; i++) { //ready queue에서 남은 시간이 가장 짧은 프로세스 찾기
+			if (burst_time[request[i]] < min && ready[request[i]] == 1) {
+				min_idx = request[i];
+				min = burst_time[min_idx];
+				exist = 1;
 			}
-			CPU = info[min_idx][0];
+		}
+		//context switching (CPU가 비었거나 ready queue의 프로세스가 CPU의 프로세스보다 남은 시간이 더 짧음)
+		if (exist && (CPU == -1 || burst_time[min_idx] < burst_time[CPU])) {
+			if (burst_time[min_idx] < burst_time[CPU])
+			{
+				ready[CPU] = 1;	//running->ready
+			}
+			CPU = min_idx;
+			ready[CPU] = 0;		//ready->running
+			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
+			if (response[CPU]==-1) { response[CPU] = tick - info[CPU][1]; } //response time=현재 tick - arrival time
 		}
 		break;
 	case 4:
