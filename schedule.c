@@ -129,7 +129,7 @@ int do_schedule(int tick) {
 	switch (mtd)
 	{
 	case 1:
-		//실행중인 프로세스의 남은 burst 시간 업데이트
+		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst_time[CPU]--; }
 		if (CPU == -1 || !burst_time[CPU]) {	//context switching (CPU가 비었거나 프로세스가 끝남)
 			if (CPU != -1 && !burst_time[CPU]) {//terminate
@@ -149,7 +149,7 @@ int do_schedule(int tick) {
 		}
 		break;
 	case 2:
-		//실행중인 프로세스의 남은 burst 시간 업데이트
+		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst_time[CPU]--; }
 		if (CPU != -1 && !burst_time[CPU]) {//terminate
 			finish[CPU] = tick;
@@ -173,7 +173,7 @@ int do_schedule(int tick) {
 		}
 		break;
 	case 3:
-		//실행중인 프로세스의 남은 burst 시간 업데이트
+		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst_time[CPU]--; }
 		if (CPU != -1 && !burst_time[CPU]) {//terminate
 			finish[CPU] = tick;
@@ -181,8 +181,6 @@ int do_schedule(int tick) {
 			CPU = -1;
 			if (terminate == num) { break; } //모든 프로세스 terminate
 		}
-
-
 		for (int i = 0; i < end_pt; i++) { //ready queue에서 남은 시간이 가장 짧은 프로세스 찾기
 			if (burst_time[request[i]] < min && ready[request[i]] == 1) {
 				min_idx = request[i];
@@ -192,10 +190,7 @@ int do_schedule(int tick) {
 		}
 		//context switching (CPU가 비었거나 ready queue의 프로세스가 CPU의 프로세스보다 남은 시간이 더 짧음)
 		if (exist && (CPU == -1 || burst_time[min_idx] < burst_time[CPU])) {
-			if (burst_time[min_idx] < burst_time[CPU])
-			{
-				ready[CPU] = 1;	//running->ready
-			}
+			if (burst_time[min_idx] < burst_time[CPU]) { ready[CPU] = 1; }//running->ready
 			CPU = min_idx;
 			ready[CPU] = 0;		//ready->running
 			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
@@ -203,37 +198,29 @@ int do_schedule(int tick) {
 		}
 		break;
 	case 4:
-		//실행중인 프로세스의 남은 burst 시간 업데이트
-		if (CPU != 0) { 
-			burst_time[CPU - 1]--;
+		//실행중인 프로세스의 남은 시간, quantum 업데이트
+		if (CPU != -1) { 
+			burst_time[CPU]--;
 			quantum--;
 		}
-		if (quantum==0 || !CPU || !burst_time[CPU - 1])
-		{
-			if (!burst_time[CPU - 1])//terminate
-			{
-				finish[CPU - 1] = tick;
-				terminate++;
+		if (CPU != -1 && !burst_time[CPU]) {//terminate
+			finish[CPU] = tick;
+			terminate++;
+			CPU = -1;
+			if (terminate == num) { break; } //모든 프로세스 terminate
+		}
+		if ((CPU == -1 || !quantum) && request[front_pt] != -1) {//context switching(CPU가 비었거나 quantum 지남)
+			if (CPU != -1 && burst_time[CPU]) {//CPU의 프로세스가 더 실행되어야 함(running->ready)
+				ready[CPU - 1] = 1;
+				request[end_pt] = CPU;
+				end_pt++;
 			}
-			if (request[front_pt] != 0)//context switching
-			{
-				int ID = request[front_pt];
-				printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, ID);
-				ready[ID - 1] = 0;
-				if (CPU && burst_time[CPU - 1]) { //CPU에 있던 프로세스를 ready queue로 이동
-					ready[CPU - 1] = 1;		
-					request[end_pt] = CPU;
-					end_pt++;
-				} 
-				if (response[ID - 1] == -1) {//CPU를 처음 할당받음
-					response[ID - 1] = tick - info[ID - 1][1]; //response time = tick - arrival time
-				}
-				CPU = ID;
-				quantum = 2;
-				front_pt++;
-			}
-			//ready queue가 비었지만 현재 프로세스가 끝나지 않음
-			else { quantum = 2; }
+			CPU = request[front_pt];
+			ready[CPU] = 0;		//ready->running
+			front_pt++;
+			quantum = 2;
+			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time = 현재 tick - arrival time
+			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
 		}
 		break;
 	default:
