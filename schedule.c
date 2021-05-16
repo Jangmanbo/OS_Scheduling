@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//2018102226 장예원
+
 int mtd;					//scheduling method
 int num;					//process 개수
 int terminate =0;			//terminated process 개수
@@ -25,7 +27,7 @@ void read_proc_list(const char* file_name) {
 	FILE* pFile = fopen(file_name, "r");
 	if (pFile != NULL && !feof(pFile)) {
 		fgets(line, 1024, pFile);
-		num = atoi(line);
+		num = atoi(line);	//프로세스의 개수
 		idx = 0;
 		while (!feof(pFile)) {
 			fgets(line, 1024, pFile);
@@ -41,13 +43,15 @@ void read_proc_list(const char* file_name) {
 			}
 		}
 	}
+	else { return; }
 
-	//동적할당
+	//1차원 배열
 	finish = malloc(sizeof(int) * num);
 	response = malloc(sizeof(int) * num);
 	ready_exist = malloc(sizeof(int) * num);
 	burst = malloc(sizeof(int) * num);
 
+	//2차원 배열
 	info = malloc(sizeof(int*) * num);
 	for (int i = 0; i < num; i++) { info[i] = malloc(sizeof(int*) * 3); }
 
@@ -93,7 +97,7 @@ void set_schedule(int method) {
 	default:
 		break;
 	}
-	mtd = method;
+	mtd = method;	//전역변수에 method 저장
 }
 
 // fn: do_schedule
@@ -242,6 +246,6 @@ void print_performance() {
 	}
 	printf("-------------------------------------------------------------------------------------------\n");
 	//평균 turn around time, waiting time, response time 출력
-	printf("%9s%36.2f%18.2f%16.2f\n", "average:", turn / num, wait / num, res / num);	//
+	printf("%9s%36.2f%18.2f%16.2f\n", "average:", turn / num, wait / num, res / num);
 	printf("===========================================================================================\n");
 }
