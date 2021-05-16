@@ -258,8 +258,19 @@ int do_schedule(int tick) {
 // fn: print_performance();
 // desc: print system performance
 void print_performance() {
+	float turn = 0, wait = 0, res = 0;
+	printf("===========================================================================================\n");
+	printf("%5s%11s%9s%8s%20s%17s%16s\n", "PID", "arrival", "finish", "burst", "Turn around time", "Waiting time", "Response time");
+	printf("===========================================================================================\n"); 
+	
 	for (int i = 0; i < num; i++)
 	{
-		printf("ID : %d finish : %d waiting time : %d response time : %d\n", i + 1, finish[i], waiting[i], response[i]);
+		printf("%4d%9d%9d%9d%14d%18d%16d\n", i + 1, info[i][1], finish[i], info[i][2], finish[i] - info[i][1], waiting[i], response[i]);
+		turn += finish[i] - info[i][1];
+		wait += waiting[i];
+		res += response[i];
 	}
+	printf("-------------------------------------------------------------------------------------------\n");
+	printf("%9s%36.2f%18.2f%16.2f\n", "average:", turn / num, wait / num, res / num);
+	printf("===========================================================================================\n");
 }
