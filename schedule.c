@@ -144,6 +144,7 @@ int do_schedule(int tick) {
 			if (CPU != -1 && !burst[CPU]) {		//running->terminated
 				finish[CPU] = tick;
 				terminate++;
+				CPU = -1;
 				if (terminate == num) { break; }//모든 프로세스 terminated
 			}
 			if (ready[front_pt] != -1)			//ready queue에 프로세스가 있음
