@@ -5,7 +5,7 @@
 
 int mtd;					//scheduling method
 int num;					//process 개수
-int terminate =0;			//terminated process 개수
+int terminate = 0;			//terminated process 개수
 int CPU = -1;				//CPU에 있는 process index
 int** info;					//process list 정보
 int* burst;					//남은 시간
@@ -34,8 +34,8 @@ void read_proc_list(const char* file_name) {
 			char* ptr = strtok(line, " ");	// " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
 			while (ptr != NULL)				// 자른 문자열이 나오지 않을 때까지 반복
 			{
-				if (ptr[0]!= '\n')
-				{					
+				if (ptr[0] != '\n')
+				{
 					buf[idx] = atoi(ptr);
 					idx++;
 				}
@@ -55,8 +55,24 @@ void read_proc_list(const char* file_name) {
 	info = malloc(sizeof(int*) * num);
 	for (int i = 0; i < num; i++) { info[i] = malloc(sizeof(int*) * 3); }
 
-	//process list 정보 저장
+	//process list 정보 저장, 정렬
 	for (int i = 0; i < idx; i++) { info[i / 3][i % 3] = buf[i]; }
+	int temp;
+	for (int i = 0; i < num; i++)
+	{
+		for (int j = 0; j < num - 1; j++)
+		{
+			if (info[j][0] > info[j + 1][0])
+			{
+				for (int k = 0; k < 3; k++)
+				{
+					temp = info[j][k];
+					info[j][k] = info[j + 1][k];
+					info[j + 1][k] = temp;
+				}
+			}
+		}
+	}
 	for (int i = 0; i < num; i++)
 	{
 		burst[i] = info[i][2];
@@ -111,7 +127,7 @@ int do_schedule(int tick) {
 	int min_idx, min = 100, exist = 0;
 	for (int i = 0; i < num; i++)
 	{
-		if (info[i][1]==tick)	//ready queue 들어옴
+		if (info[i][1] == tick)	//ready queue 들어옴
 		{
 			printf("[tick: %02d ] New Process (ID: %d) newly joins to ready queue\n", tick, info[i][0]);
 			ready_exist[i] = 1;
@@ -187,12 +203,12 @@ int do_schedule(int tick) {
 			CPU = min_idx;
 			ready_exist[CPU] = 0;		//ready->running
 			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
-			if (response[CPU]==-1) { response[CPU] = tick - info[CPU][1]; } //response time = tick - arrival time
+			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time = tick - arrival time
 		}
 		break;
 	case 4:
 		//실행중인 프로세스의 남은 시간, quantum 업데이트
-		if (CPU != -1) { 
+		if (CPU != -1) {
 			burst[CPU]--;
 			quantum--;
 		}
@@ -234,11 +250,11 @@ void print_performance() {
 	float turn = 0, wait = 0, res = 0;
 	printf("===========================================================================================\n");
 	printf("%5s%11s%9s%8s%20s%17s%16s\n", "PID", "arrival", "finish", "burst", "Turn around time", "Waiting time", "Response time");
-	printf("===========================================================================================\n"); 
-	
+	printf("===========================================================================================\n");
+
 	for (int i = 0; i < num; i++)
 	{
-		printf("%4d%9d%9d%9d%14d%18d%16d\n", info[i][0], info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i]-info[i][1]-info[i][2], response[i]);
+		printf("%4d%9d%9d%9d%14d%18d%16d\n", info[i][0], info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i] - info[i][1] - info[i][2], response[i]);
 		//모든 프로세스의 turn around time, waiting time, response time의 합
 		turn += finish[i] - info[i][1];
 		wait += finish[i] - info[i][1] - info[i][2];
