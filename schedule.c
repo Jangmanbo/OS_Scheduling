@@ -3,13 +3,13 @@
 
 int mtd;					//scheduling method
 int num;					//process 개수
-int terminate =0;			//terminate된 process 개수
-int CPU = -1;				//CPU에 있는 process의 ID
+int terminate =0;			//terminated process 개수
+int CPU = -1;				//CPU에 있는 process index
 int** info;					//process list 정보
 int* burst;					//남은 시간
 int* finish;				//finish time
 int* response;				//response time
-int* ready_exist;			//ready queue에 있는지 없는지
+int* ready_exist;			//ready queue에 프로세스가 있는지 없는지
 int ready[1024];			//ready queue
 int front_pt = 0;			//ready queue pointer
 int end_pt = 0;				//ready queue pointer
@@ -107,10 +107,10 @@ int do_schedule(int tick) {
 	int min_idx, min = 100, exist = 0;
 	for (int i = 0; i < num; i++)
 	{
-		if (info[i][1]==tick)
+		if (info[i][1]==tick)	//ready queue 들어옴
 		{
 			printf("[tick: %02d ] New Process (ID: %d) newly joins to ready queue\n", tick, info[i][0]);
-			ready_exist[i] = 1;//ready queue 들어옴
+			ready_exist[i] = 1;
 			ready[end_pt] = i;
 			end_pt++;
 		}
@@ -120,18 +120,18 @@ int do_schedule(int tick) {
 	case 1:
 		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst[CPU]--; }
-		if (CPU == -1 || !burst[CPU]) {	//context switching (CPU가 비었거나 프로세스가 끝남)
-			if (CPU != -1 && !burst[CPU]) {//terminate
+		if (CPU == -1 || !burst[CPU]) {			//context switching (CPU가 비었거나 프로세스가 끝남)
+			if (CPU != -1 && !burst[CPU]) {		//running->terminated
 				finish[CPU] = tick;
 				terminate++;
-				if (terminate == num) { break; } //모든 프로세스 terminate
+				if (terminate == num) { break; }//모든 프로세스 terminated
 			}
-			if (ready[front_pt] != -1)	//ready queue에 프로세스가 있음
+			if (ready[front_pt] != -1)			//ready queue에 프로세스가 있음
 			{
 				CPU = ready[front_pt];
 				printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
-				ready_exist[CPU] = 0;						//ready queue에서 나옴
-				response[CPU] = tick - info[CPU][1];//response time=현재 tick - arrival time
+				ready_exist[CPU] = 0;						//ready->runnning
+				response[CPU] = tick - info[CPU][1];		//response time = tick - arrival time
 				front_pt++;
 				break;
 			}
@@ -140,11 +140,11 @@ int do_schedule(int tick) {
 	case 2:
 		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst[CPU]--; }
-		if (CPU != -1 && !burst[CPU]) {//terminate
+		if (CPU != -1 && !burst[CPU]) {		//running->terminated
 			finish[CPU] = tick;
 			terminate++;
 			CPU = -1;
-			if (terminate == num) { break; } //모든 프로세스 terminate
+			if (terminate == num) { break; } //모든 프로세스 terminated
 		}
 		for (int i = 0; i < end_pt; i++) { //ready queue에서 burst time이 가장 짧은 프로세스 찾기
 			if (burst[ready[i]] < min && ready_exist[ready[i]] == 1) {
@@ -158,13 +158,13 @@ int do_schedule(int tick) {
 			CPU = min_idx;
 			ready_exist[CPU] = 0;		//ready->running
 			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
-			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time=현재 tick - arrival time
+			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time = tick - arrival time
 		}
 		break;
 	case 3:
 		//실행중인 프로세스의 남은 시간 업데이트
 		if (CPU != -1) { burst[CPU]--; }
-		if (CPU != -1 && !burst[CPU]) {//terminate
+		if (CPU != -1 && !burst[CPU]) {		//running->terminated
 			finish[CPU] = tick;
 			terminate++;
 			CPU = -1;
@@ -179,11 +179,11 @@ int do_schedule(int tick) {
 		}
 		//context switching (CPU가 비었거나 ready queue의 프로세스가 CPU의 프로세스보다 남은 시간이 더 짧음)
 		if (exist && (CPU == -1 || burst[min_idx] < burst[CPU])) {
-			if (burst[min_idx] < burst[CPU]) { ready_exist[CPU] = 1; }//running->ready
+			if (burst[min_idx] < burst[CPU]) { ready_exist[CPU] = 1; }		//running->ready
 			CPU = min_idx;
 			ready_exist[CPU] = 0;		//ready->running
 			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
-			if (response[CPU]==-1) { response[CPU] = tick - info[CPU][1]; } //response time=현재 tick - arrival time
+			if (response[CPU]==-1) { response[CPU] = tick - info[CPU][1]; } //response time = tick - arrival time
 		}
 		break;
 	case 4:
@@ -192,30 +192,31 @@ int do_schedule(int tick) {
 			burst[CPU]--;
 			quantum--;
 		}
-		if (CPU != -1 && !burst[CPU]) {//terminate
+		if (CPU != -1 && !burst[CPU]) {		//running->terminated
 			finish[CPU] = tick;
 			terminate++;
 			CPU = -1;
-			if (terminate == num) { break; } //모든 프로세스 terminate
+			if (terminate == num) { break; }//모든 프로세스 terminated
 		}
-		if ((CPU == -1 || !quantum) && ready[front_pt] != -1) {//context switching(CPU가 비었거나 quantum 지남)
-			if (CPU != -1 && burst[CPU]) {//CPU의 프로세스가 더 실행되어야 함(running->ready)
+		if ((CPU == -1 || !quantum) && ready[front_pt] != -1) {	//context switching(CPU가 비었거나 quantum 지남)
+			if (CPU != -1 && burst[CPU]) {	//CPU의 프로세스가 더 실행되어야 함(running->ready)
 				ready_exist[CPU - 1] = 1;
 				ready[end_pt] = CPU;
 				end_pt++;
 			}
+			//ready->running
 			CPU = ready[front_pt];
-			ready_exist[CPU] = 0;		//ready->running
+			ready_exist[CPU] = 0;
 			front_pt++;
 			quantum = 2;
-			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time = 현재 tick - arrival time
+			if (response[CPU] == -1) { response[CPU] = tick - info[CPU][1]; } //response time = tick - arrival time
 			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
 		}
 		break;
 	default:
 		break;
 	}
-	
+	//모든 프로세스 terminated
 	if (num == terminate) {
 		printf("[tick: %02d ] All processes are terminated.\n", tick);
 		return 0;
@@ -234,11 +235,13 @@ void print_performance() {
 	for (int i = 0; i < num; i++)
 	{
 		printf("%4d%9d%9d%9d%14d%18d%16d\n", info[i][0], info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i]-info[i][1]-info[i][2], response[i]);
+		//모든 프로세스의 turn around time, waiting time, response time의 합
 		turn += finish[i] - info[i][1];
 		wait += finish[i] - info[i][1] - info[i][2];
 		res += response[i];
 	}
 	printf("-------------------------------------------------------------------------------------------\n");
-	printf("%9s%36.2f%18.2f%16.2f\n", "average:", turn / num, wait / num, res / num);
+	//평균 turn around time, waiting time, response time 출력
+	printf("%9s%36.2f%18.2f%16.2f\n", "average:", turn / num, wait / num, res / num);	//
 	printf("===========================================================================================\n");
 }
