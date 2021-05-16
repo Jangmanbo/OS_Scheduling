@@ -5,12 +5,12 @@ int mtd;					//scheduling method
 int num;					//process 개수
 int terminate =0;			//terminate된 process 개수
 int** info;					//process list 정보
-int CPU = 0;				//CPU에 있는 process의 ID
+int CPU = -1;				//CPU에 있는 process의 ID
 int* burst_time;
 int* finish;
 int* response;				
 int* ready;					//ready queue
-int request[1024] = { 0 };	//RR scheduling ready queue
+int request[1024];			//RR scheduling ready queue
 int front_pt = 0;
 int end_pt = 0;
 int quantum = 2;
@@ -68,6 +68,10 @@ void read_proc_list(const char* file_name) {
 		ready[i] = 0;
 		response[i] = -1;
 	}
+	for (int i = 0; i < 1024; i++)
+	{
+		request[i] = -1;
+	}
 }
 
 // fn: set_schedule
@@ -117,31 +121,31 @@ int do_schedule(int tick) {
 		{
 			printf("[tick: %02d ] New Process (ID: %d) newly joins to ready queue\n", tick, info[i][0]);
 			ready[i] = 1;//ready queue 들어옴
-			if (mtd == 4) { 
-				request[end_pt] = info[i][0];
-				end_pt++;
-			}
+			request[end_pt] = i;
+			end_pt++;
 		}
 	}
 
 	switch (mtd)
 	{
 	case 1:
-		if (CPU != num && (!CPU || burst_time[CPU - 1] == burst)) { //tick==0이거나 context switching이 일어남
-			printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
-			ready[CPU] = 0;
-			response[CPU] = tick - info[CPU][1]; //response time=현재 tick - arrival time
-			if (CPU) { 
-				finish[CPU - 1] = tick;//finish time 기록
+		//실행중인 프로세스의 남은 burst 시간 업데이트
+		if (CPU != -1) { burst_time[CPU]--; }
+		if (CPU == -1 || !burst_time[CPU]) {	//context switching (CPU가 비었거나 프로세스가 끝남)
+			if (CPU != -1 && !burst_time[CPU]) {//terminate
+				finish[CPU] = tick;
 				terminate++;
+				if (terminate == num) { break; }
 			}
-			CPU = info[CPU][0];
-			burst = 0;//burst 초기화
-
-		}
-		else if (burst_time[CPU - 1] == burst) { //모든 프로세스가 끝난 경우
-			terminate++;
-			finish[CPU - 1] = tick;//finish time 기록
+			if (request[front_pt] != -1)	//ready queue에 프로세스가 있음
+			{
+				CPU = request[front_pt];
+				printf("[tick: %02d ] Dispatch to Process (ID: %d)\n", tick, info[CPU][0]);
+				ready[CPU] = 0;						//ready queue에서 나옴
+				response[CPU] = tick - info[CPU][1];//response time=현재 tick - arrival time
+				front_pt++;
+				break;
+			}
 		}
 		break;
 	case 2:
@@ -256,7 +260,7 @@ void print_performance() {
 	
 	for (int i = 0; i < num; i++)
 	{
-		printf("%4d%9d%9d%9d%14d%18d%16d\n", i + 1, info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i]-info[i][1]-info[i][2], response[i]);
+		printf("%4d%9d%9d%9d%14d%18d%16d\n", info[i][0], info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i]-info[i][1]-info[i][2], response[i]);
 		turn += finish[i] - info[i][1];
 		wait += finish[i] - info[i][1] - info[i][2];
 		res += response[i];
