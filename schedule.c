@@ -8,7 +8,6 @@ int** info;					//process list 정보
 int CPU = 0;				//CPU에 있는 process의 ID
 int* burst_time;
 int* finish;
-int* waiting;
 int* response;				
 int* ready;					//ready queue
 int request[1024] = { 0 };	//RR scheduling ready queue
@@ -48,7 +47,6 @@ void read_proc_list(const char* file_name) {
 	}
 
 	finish = malloc(sizeof(int) * num);
-	waiting = malloc(sizeof(int) * num);
 	response = malloc(sizeof(int) * num);
 	ready = malloc(sizeof(int) * num);
 	burst_time = malloc(sizeof(int) * num);
@@ -67,7 +65,6 @@ void read_proc_list(const char* file_name) {
 	for (int i = 0; i < num; i++)
 	{
 		burst_time[i] = info[i][2];
-		waiting[i] = 0;
 		ready[i] = 0;
 		response[i] = -1;
 	}
@@ -114,12 +111,6 @@ void set_schedule(int method) {
 //     1: otherwise
 int do_schedule(int tick) {
 	burst++;
-	for (int i = 0; i < num; i++)
-	{
-		if (ready[i] == 1) {
-			waiting[i]++;
-		}
-	}
 	for (int i = 0; i < num; i++)
 	{
 		if (info[i][1]==tick)
@@ -173,7 +164,7 @@ int do_schedule(int tick) {
 				finish[CPU - 1] = tick;
 				terminate++;
 			}//finish time 기록
-			CPU = min_idx + 1;
+			CPU = info[min_idx][0];
 			burst = 0;//burst 초기화
 
 		}
@@ -207,7 +198,7 @@ int do_schedule(int tick) {
 			if (response[min_idx] == -1) {//CPU를 처음 할당받음
 				response[min_idx] = tick - info[min_idx][1]; //response time = tick - arrival time
 			}
-			CPU = min_idx + 1;
+			CPU = info[min_idx][0];
 		}
 		break;
 	case 4:
@@ -265,9 +256,9 @@ void print_performance() {
 	
 	for (int i = 0; i < num; i++)
 	{
-		printf("%4d%9d%9d%9d%14d%18d%16d\n", i + 1, info[i][1], finish[i], info[i][2], finish[i] - info[i][1], waiting[i], response[i]);
+		printf("%4d%9d%9d%9d%14d%18d%16d\n", i + 1, info[i][1], finish[i], info[i][2], finish[i] - info[i][1], finish[i]-info[i][1]-info[i][2], response[i]);
 		turn += finish[i] - info[i][1];
-		wait += waiting[i];
+		wait += finish[i] - info[i][1] - info[i][2];
 		res += response[i];
 	}
 	printf("-------------------------------------------------------------------------------------------\n");
